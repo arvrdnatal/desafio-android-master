@@ -1,9 +1,9 @@
 package com.picpay.desafio.android.ui
 
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,14 +15,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,70 +37,29 @@ import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import coil.size.Size
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
-import com.picpay.desafio.android.data.service.PicPayService
 import com.picpay.desafio.android.R
+import com.picpay.desafio.android.data.model.ButtonInfo
 import com.picpay.desafio.android.data.model.User
 import com.picpay.desafio.android.ui.theme.Typography
 import dagger.hilt.android.AndroidEntryPoint
-import okhttp3.OkHttpClient
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    private val url = "https://609a908e0f5a13001721b74e.mockapi.io/picpay/api/"
 
-    private val gson: Gson by lazy { GsonBuilder().create() }
-
-    private val okHttp: OkHttpClient by lazy {
-        OkHttpClient.Builder().build()
-    }
-
-    private val retrofit: Retrofit by lazy {
-        Retrofit.Builder().baseUrl(url).client(okHttp)
-            .addConverterFactory(GsonConverterFactory.create(gson)).build()
-    }
-
-    private val service: PicPayService by lazy {
-        retrofit.create(PicPayService::class.java)
-    }
+    private val viewModel: MainActivityViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            var hasProgressBar by rememberSaveable { mutableStateOf(true) }
-            var users: List<User>? by rememberSaveable { mutableStateOf(null) }
+            val state by viewModel.state.collectAsState()
 
-            service.getUsers().enqueue(object : Callback<List<User>> {
-                    override fun onFailure(call: Call<List<User>>, t: Throwable) {
-                        val message = getString(R.string.error)
-
-                        hasProgressBar = false
-                        users = null
-
-                        Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
-                    }
-
-                    override fun onResponse(
-                        call: Call<List<User>>, response: Response<List<User>>
-                    ) {
-                        hasProgressBar = false
-                        users = response.body()
-                    }
-                })
-
-            MainActivityScreen(hasProgressBar, users)
+            MainActivityScreen(state)
         }
     }
 }
 
 @Composable
-fun MainActivityScreen(hasProgressBar: Boolean, users: List<User>?) {
+fun MainActivityScreen(state: MainActivityUiState) {
     Surface(
         modifier = Modifier.fillMaxSize(), color = colorResource(R.color.colorPrimaryDark)
     ) {
@@ -113,29 +72,97 @@ fun MainActivityScreen(hasProgressBar: Boolean, users: List<User>?) {
                 )
             )
 
-            if (hasProgressBar) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    CircularProgressIndicator(color = colorResource(id = R.color.colorAccent))
-                }
-            }
-
-            users?.let {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = 24.dp)
-                ) {
-                    items(it) { item ->
-                        SetupUserViewHolder(item)
-                    }
-                }
+            when {
+                state.loading != null -> MainActivityScreenLoading(state.loading)
+                state.error != null -> MainActivityScreenError(state.error)
+                state.success != null -> MainActivityScreenSuccess(state.success)
             }
         }
     }
+}
+
+@Composable
+fun MainActivityScreenLoading(loading: MainActivityUiLoading) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        CircularProgressIndicator(color = colorResource(id = R.color.colorAccent))
+        Text(
+            text = stringResource(id = loading.message),
+            color = Color.White,
+            modifier = Modifier.padding(top = 15.dp)
+        )
+    }
+}
+
+@Composable
+@Preview
+fun MainActivityScreenLoadingPreview() {
+    MainActivityScreen(MainActivityUiState(loading = MainActivityUiLoading()))
+}
+
+@Composable
+fun MainActivityScreenError(error: MainActivityUiError) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = stringResource(id = error.message),
+            color = Color.White
+        )
+        Button(
+            modifier = Modifier.padding(top = 15.dp),
+            colors = ButtonDefaults.buttonColors()
+                .copy(containerColor = colorResource(id = R.color.colorAccent)),
+            onClick = error.button.action
+        ) {
+            Text(text = stringResource(id = error.button.text))
+        }
+    }
+}
+
+@Composable
+@Preview
+fun MainActivityScreenErrorPreview() {
+    MainActivityScreen(
+        MainActivityUiState(
+            error = MainActivityUiError(
+                message = R.string.error,
+                button = ButtonInfo(text = R.string.retry, action = {})
+            )
+        )
+    )
+}
+
+@Composable
+fun MainActivityScreenSuccess(success: MainActivityUiSuccess) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = 24.dp)
+    ) {
+        items(success.usersList) { item ->
+            SetupUserViewHolder(item)
+        }
+    }
+}
+
+@Composable
+@Preview
+fun MainActivityScreenSuccessPreview() {
+    MainActivityScreen(
+        MainActivityUiState(
+            success = MainActivityUiSuccess(
+                usersList = listOf(
+                    User(id = 1, name = "First User", img = "", username = "first_user")
+                )
+            )
+        )
+    )
 }
 
 @Composable
@@ -152,9 +179,9 @@ fun SetupUserViewHolder(user: User) {
         )
 
         val painterModifier = Modifier
-                .padding(vertical = 12.dp)
-                .padding(start = 24.dp, end = 16.dp)
-                .size(52.dp)
+            .padding(vertical = 12.dp)
+            .padding(start = 24.dp, end = 16.dp)
+            .size(52.dp)
 
         when (painter.state) {
             is AsyncImagePainter.State.Empty, is AsyncImagePainter.State.Error -> {
@@ -164,7 +191,6 @@ fun SetupUserViewHolder(user: User) {
                     modifier = painterModifier.clip(RoundedCornerShape(50))
                 )
             }
-
             is AsyncImagePainter.State.Loading -> {
                 CircularProgressIndicator(
                     color = colorResource(id = R.color.colorAccent),
@@ -185,20 +211,4 @@ fun SetupUserViewHolder(user: User) {
             Text(text = user.name, color = colorResource(id = R.color.colorDetail))
         }
     }
-}
-
-@Composable
-@Preview
-fun MainActivityScreenLoadingPreview() {
-    MainActivityScreen(true, null)
-}
-
-@Composable
-@Preview
-fun MainActivityScreenUserPreview() {
-    MainActivityScreen(
-        false, listOf(
-            User(id = 1, name = "First User", img = "", username = "first_user")
-        )
-    )
 }
