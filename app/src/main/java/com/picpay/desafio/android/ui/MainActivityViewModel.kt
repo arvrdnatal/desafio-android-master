@@ -32,7 +32,7 @@ class MainActivityViewModel @Inject constructor(
 
         viewModelScope.launch {
             when (val result = mainUseCase.getUsersList()) {
-                is MainResult.Success ->handleSuccessResult(result.success)
+                is MainResult.Success -> handleSuccessResult(result.success)
                 is MainResult.Fail -> handleFailResult()
             }
         }
