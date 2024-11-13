@@ -31,6 +31,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImagePainter
@@ -38,7 +40,6 @@ import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import coil.size.Size
 import com.picpay.desafio.android.R
-import com.picpay.desafio.android.data.model.ButtonInfo
 import com.picpay.desafio.android.data.model.User
 import com.picpay.desafio.android.ui.theme.Typography
 import dagger.hilt.android.AndroidEntryPoint
@@ -67,9 +68,9 @@ fun MainActivityScreen(state: MainActivityUiState) {
             Text(
                 text = stringResource(id = R.string.title),
                 style = Typography.headlineLarge,
-                modifier = Modifier.padding(
-                    start = 24.dp, top = 48.dp
-                )
+                modifier = Modifier
+                    .padding(start = 24.dp, top = 48.dp)
+                    .semantics { contentDescription = MainActivityTestTag.TITLE_TAG }
             )
 
             when {
@@ -84,7 +85,9 @@ fun MainActivityScreen(state: MainActivityUiState) {
 @Composable
 fun MainActivityScreenLoading(loading: MainActivityUiLoading) {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .semantics { contentDescription = MainActivityTestTag.LOADING_TAG },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -100,13 +103,15 @@ fun MainActivityScreenLoading(loading: MainActivityUiLoading) {
 @Composable
 @Preview
 fun MainActivityScreenLoadingPreview() {
-    MainActivityScreen(MainActivityUiState(loading = MainActivityUiLoading()))
+    MainActivityScreen(MainActivityTestVariable.LOADING_STATE)
 }
 
 @Composable
 fun MainActivityScreenError(error: MainActivityUiError) {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .semantics { contentDescription = MainActivityTestTag.ERROR_TAG },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -128,47 +133,50 @@ fun MainActivityScreenError(error: MainActivityUiError) {
 @Composable
 @Preview
 fun MainActivityScreenErrorPreview() {
-    MainActivityScreen(
-        MainActivityUiState(
-            error = MainActivityUiError(
-                message = R.string.error,
-                button = ButtonInfo(text = R.string.retry, action = {})
-            )
-        )
-    )
+    MainActivityScreen(MainActivityTestVariable.ERROR_STATE)
 }
 
 @Composable
 fun MainActivityScreenSuccess(success: MainActivityUiSuccess) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = 24.dp)
-    ) {
-        items(success.usersList) { item ->
-            SetupUserViewHolder(item)
+    success.usersList.takeIf { it.isNotEmpty() }?.let {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 24.dp)
+                .semantics { contentDescription = MainActivityTestTag.SUCCESS_NOT_EMPTY_LIST_TAG },
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            items(it) { item -> SetupUserViewHolder(item) }
         }
+    } ?: run {
+        Text(
+            text = stringResource(id = R.string.empty_list),
+            color = Color.White,
+            modifier = Modifier.semantics {
+                contentDescription = MainActivityTestTag.SUCCESS_EMPTY_LIST_TAG
+            }
+        )
     }
 }
 
 @Composable
 @Preview
 fun MainActivityScreenSuccessPreview() {
-    MainActivityScreen(
-        MainActivityUiState(
-            success = MainActivityUiSuccess(
-                usersList = listOf(
-                    User(id = 1, name = "First User", img = "", username = "first_user")
-                )
-            )
-        )
-    )
+    MainActivityScreen(MainActivityTestVariable.SUCCESS_STATE)
+}
+
+@Composable
+@Preview
+fun MainActivityScreenSuccessEmptyListPreview() {
+    MainActivityScreen(MainActivityTestVariable.SUCCESS_EMPTY_LIST_STATE)
 }
 
 @Composable
 fun SetupUserViewHolder(user: User) {
     Row(
-        modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         val painter = rememberAsyncImagePainter(
             model = ImageRequest

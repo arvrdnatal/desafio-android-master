@@ -4,4 +4,5 @@
     <string name="error">Ocorreu um erro. Tente novamente.</string>
     <string name="loading">Carregando…</string>
     <string name="retry">Recarregar</string>
+    <string name="empty_list">A lista está vazia</string>
 </resources>
