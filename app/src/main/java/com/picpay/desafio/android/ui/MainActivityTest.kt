@@ -16,12 +16,11 @@ object MainActivityTestVariable {
     val LOADING_STATE = MainActivityUiState(loading = MainActivityUiLoading())
     val LOADING_NULL_STATE = MainActivityUiState(loading = null)
 
-    val ERROR_STATE = MainActivityUiState(
-        error = MainActivityUiError(
-            message = R.string.error,
-            button = ButtonInfo(text = R.string.retry, action = {})
-        )
+    val ERROR = MainActivityUiError(
+        message = R.string.error,
+        button = ButtonInfo(text = R.string.retry, action = {})
     )
+    val ERROR_STATE = MainActivityUiState(error = ERROR)
     val ERROR_NULL_STATE = MainActivityUiState(error = null)
 
     val SUCCESS_STATE = MainActivityUiState(
